@@ -34,3 +34,10 @@ nohup.out
 /logs/
 /raw/
 /nohup.*
+.env
+*.dot
+*.svg
+*.out
+*.sh
+*azcopy
+azcopy.*

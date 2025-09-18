@@ -11,7 +11,7 @@ checkpoint species_split:
         min_clas_size=15,
     conda:
         "../envs/data_processing.yaml"
-    log: "log/taxon/split/species_split_{taxon}.log",
+    log: "logs/taxon/split/species_split_{taxon}.log",
     shell:
         """
             python workflow/scripts/species_split.py \

@@ -6,3 +6,4 @@ channels:
 dependencies:
   - ncbi-datasets-cli=16.22.0
   - unzip=6.0
+  - jq=1.6

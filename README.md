@@ -53,17 +53,20 @@ Some additional BGCFlow installation info can be found in [the main BGCFlow wiki
 taxons:
   - name: <family_name>
     reference_only: False
+    # custom_samples: "config/custom_samples.csv" 
 
 use_ncbi_data_for_checkm: True
 pankb_alleleome_only: False
 
 rules:
+  classification: True
   pankb_nova: True
   pankb_minimal: True
-  pankb: True
-  alleleome: True
+  pankb: False
+  alleleome: False
+  phylons: True
 ```
-Replace `<family_name>` with whatever family you want to compute PanKB data for and adjust the other settings as needed.
+This is also the current setting of data processing for PanKB. Replace `<family_name>` with whatever family you want to compute PanKB data for and adjust the other settings as needed. If there are custom samples to be processd, use the custom_samples property inside taxons, add the genome id as index and data stored path as path to the csv file.
 
 3. **Create the data directory**. Create an empty directory in the data disk (any location is ok) and symlink it to `./data` (from the root of this repo), such that we effectively have an empty directory named `data` at the root of the repo. At this point, running `tree -l -L 2 .`should yield this structure:
 ```
@@ -103,10 +106,10 @@ Replace `<n_cores>` with the number of cores of your VM (or how many you want to
 
 We use the `pankbpipeline` storage account in the `rg-recon` resource group to store the results and all the intermediate files from our BGCFlow runs for PanKB. Simply add it your new data as an additional directory in the runs blob and **remember to also upload the `config.yaml`**. 
 
-You can do it easily with `azcopy` (just be wary of the huge log files issue described above). For instance, if the (now populated) empty data directory created previously is `/data/bgcflow_data/cyanobacteria/data`, you can simply:
+You can do it easily with `azcopy` (just be wary of the huge log files issue described above). For instance, if the aggregated data directory for a specific species ran previously is `/data/<species>`, you can simply:
 
 ```bash
-azcopy copy --dry-run --recursive --overwrite=false /data/bgcflow_data/cyanobacteria/data https://pankbpipeline.blob.core.windows.net/runs/cyanobacteria?$SAS
+azcopy copy --dry-run --recursive --overwrite=false --follow-symlinks /data/<species> https://pankbpipeline.blob.core.windows.net/runs/<species>?$SAS
 ```
 
 (assumes you have a `$SAS` variable with a valid [SAS token](https://learn.microsoft.com/en-us/azure/ai-services/translator/document-translation/how-to-guides/create-sas-tokens) for the Azure storage account)

@@ -69,18 +69,36 @@ rule gtdb_install_table:
     output:
         table=f"resources/gtdb_download/bac120_metadata_r{str(gtdb_release).split('.')[0]}.tsv"
     priority: 50
+    conda:
+        "../envs/gtdbtk.yaml"
     log:
         "logs/gtdb/gtdb_install_table/gtdb_install_table.log",
     params:
-        gtdb_link=f"https://data.gtdb.ecogenomic.org/releases/release{str(gtdb_release).split('.')[0]}/{gtdb_release}/bac120_metadata_r{str(gtdb_release).split('.')[0]}.tsv.gz",
+        gtdb_link_au=f"https://data.ace.uq.edu.au/public/gtdb/data/releases/release{str(gtdb_release).split('.')[0]}/{gtdb_release}/bac120_metadata_r{str(gtdb_release).split('.')[0]}.tsv.gz",
+        gtdb_link_main=f"https://data.gtdb.ecogenomic.org/releases/release{str(gtdb_release).split('.')[0]}/{gtdb_release}/bac120_metadata_r{str(gtdb_release).split('.')[0]}.tsv.gz",
         table_gz=lambda wildcards, output: f"{output.table}.gz",
         download_dir=lambda wildcards, output: Path(output.table).parent,
     shell:
         """
-            echo "Downloading GTDB table from {params.gtdb_link}" > {log} 2>&1
-            wget -P {params.download_dir} {params.gtdb_link} -nc >> {log} 2>&1
+            # Check if the gz file already exists and is valid
+            if [ -f "{params.table_gz}" ] && gzip -t "{params.table_gz}" 2>/dev/null; then
+                echo "Found valid GTDB table file, skipping download" >> {log}
+            else
+                echo "Downloading GTDB table..." >> {log}
+                # Try Australian server first (faster), fallback to main server
+                echo "Attempting download from Australian server (data.ace.uq.edu.au)..." >> {log}
+                if aria2c -x 16 -s 16 -c -d {params.download_dir} {params.gtdb_link_au} &>> {log}; then
+                    echo "Successfully downloaded from Australian server" >> {log}
+                else
+                    echo "Australian server failed, trying main server (data.gtdb.ecogenomic.org)..." >> {log}
+                    aria2c -x 16 -s 16 -c -d {params.download_dir} {params.gtdb_link_main} &>> {log} && echo "Successfully downloaded from main server" >> {log}
+                fi
+            fi
+            # skip gunzip to save time
             gunzip -c '{params.table_gz}' > {output.table} 2>> {log}
-            rm '{params.table_gz}'
+            # Clean up aria2 control file if exists, but keep the tar.gz
+            rm -f '{params.table_gz}.aria2' 2>/dev/null || true
+            echo "GTDB table setup complete. Keeping gz file for future use." >> {log}
         """
 
 rule gtdb_prep:

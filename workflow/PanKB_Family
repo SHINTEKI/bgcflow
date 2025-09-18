@@ -88,9 +88,9 @@ def get_accessions_for_name(name):
     return get_accessions_for_taxon(name)
 def get_accessions(wildcards):
     return get_accessions_for_taxon(wildcards.name)
-def filter_sample_names_qc(sample_names):
+def filter_sample_names_qc(sample_names, taxon):
     sample_names = set(sample_names)
-    qc = pd.read_csv(checkpoints.qc.get().output[0], sep=",", index_col=0, header=0)
+    qc = pd.read_csv(checkpoints.qc.get(name=taxon).output[0], sep=",", index_col=0, header=0)
     qc_samples_names = set(qc.index[qc["passed"] == True].to_list())
     sel = list(sample_names & qc_samples_names)
     return sel
@@ -128,7 +128,8 @@ if not PANKB_ALLELEOME_ONLY:
     ruleorder: extract_species_split_seqfu_stats > seqfu_combine
 
 def filtered_accessions_for_project(name):
-    return filter_sample_names_qc(get_samples_for_species_project(name))
+    taxon = get_taxon_for_species_project(name)
+    return filter_sample_names_qc(get_samples_for_species_project(name), taxon)
 FILTERED_ACCESSIONS = {}
 def cached_filtered_accessions_for_project(wildcards):
     name = wildcards.name

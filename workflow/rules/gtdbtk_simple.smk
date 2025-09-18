@@ -55,15 +55,44 @@ rule install_gtdbtk:
         extra_path=gtdb_extra_path,
     shell:
         """
-        (cd resources && wget https://data.gtdb.ecogenomic.org/releases/release{params.release_major}/{params.release_major}.{params.release_minor}/auxillary_files/{params.extra_path}gtdbtk_{params.release_version}_data.tar.gz -nc) 2>> {log}
-        (cd resources && mkdir -p gtdbtk && tar -xvzf gtdbtk_{params.release_version}_data.tar.gz -C "gtdbtk" --strip 1 && rm gtdbtk_{params.release_version}_data.tar.gz) &>> {log}
+        # Check if the tar.gz file already exists
+        TARFILE="resources/gtdbtk_{params.release_version}_data.tar.gz"
+        if [ -f "$TARFILE" ]; then
+            echo "Found existing GTDB database file, skipping download" >> {log}
+        else
+            echo "Downloading GTDB database..." >> {log}
+            # Try Australian server first (faster), fallback to main server
+            echo "Attempting download from Australian server (data.ace.uq.edu.au)..." >> {log}
+            if (cd resources && aria2c -x 16 -s 16 -c https://data.ace.uq.edu.au/public/gtdb/data/releases/release{params.release_major}/{params.release_major}.{params.release_minor}/auxillary_files/{params.extra_path}gtdbtk_{params.release_version}_data.tar.gz 2>> {log}); then
+                echo "Successfully downloaded from Australian server" >> {log}
+            else
+                echo "Australian server failed, trying main server (data.gtdb.ecogenomic.org)..." >> {log}
+                (cd resources && aria2c -x 16 -s 16 -c https://data.gtdb.ecogenomic.org/releases/release{params.release_major}/{params.release_major}.{params.release_minor}/auxillary_files/{params.extra_path}gtdbtk_{params.release_version}_data.tar.gz 2>> {log}) && echo "Successfully downloaded from main server" >> {log}
+            fi
+        fi
+        
+        # Check if database is already extracted using version-specific marker
+        EXTRACT_MARKER="resources/gtdbtk/.extraction_complete_{params.release_version}"
+        if [ -f "$EXTRACT_MARKER" ]; then
+            echo "Found existing extracted GTDB database, skipping extraction" >> {log}
+        else
+            # Extract the database
+            echo "Extracting GTDB database..." >> {log}
+            (cd resources && mkdir -p gtdbtk && tar -xzvf gtdbtk_{params.release_version}_data.tar.gz -C "gtdbtk" --strip 1 --touch 2>> {log})
+            # Create extraction marker with current timestamp
+            touch "$EXTRACT_MARKER"
+        fi
+        
+        # Clean up aria2 control file if exists, but keep the tar.gz
+        (cd resources && rm -f gtdbtk_{params.release_version}_data.tar.gz.aria2)
+        echo "GTDB database setup complete. Keeping tar.gz file for future use." >> {log}
         """
 
 checkpoint prepare_gtdbtk_input:
     input:
         gtdb_meta="data/interim/{stage}/gtdb/{name}/tables/df_gtdb_meta.csv",
-        json_list=fexpand("data/interim/all/assembly_report/{accession}.json", accession=RULE_FUNCTIONS["gtdbtk_simple"]["accessions"]),
-        fna=fexpand("data/interim/all/fasta/{accession}.fna", accession=RULE_FUNCTIONS["gtdbtk_simple"]["accessions"]),
+        fna=lambda wildcards: expand("data/interim/all/fasta/{accession}.fna", accession=get_accessions_for_taxon(wildcards.name)),
+        gtdb_jsonl="data/interim/{stage}/gtdb/{name}.jsonl",
     output:
         fnadir=directory("data/interim/{stage}/gtdbtk/{name}/fasta/"),
         fnalist="data/interim/{stage}/gtdbtk/{name}/fasta_list.txt",
@@ -76,17 +105,14 @@ checkpoint prepare_gtdbtk_input:
         TMPDIR="data/interim/{wildcards.stage}/tmp/gtdbtk/{wildcards.name}"
         mkdir -p $TMPDIR
         INPUT_FNA="$TMPDIR/df_fna_gtdbtk.txt"
-        INPUT_JSON="$TMPDIR/df_json_gtdbtk.txt"
         echo '{input.fna}' > $INPUT_FNA
-        echo '{input.json_list}' > $INPUT_JSON
         if [ -s $INPUT_FNA ]; then
-            python workflow/bgcflow/bgcflow/data/gtdbtk_prep.py $INPUT_FNA $INPUT_JSON {output.fnadir} {output.fnalist} 2>> {log}
+            python workflow/bgcflow/bgcflow/data/gtdbtk_prep.py $INPUT_FNA {input.gtdb_jsonl} {output.fnadir} {output.fnalist} 2>> {log}
         else
             mkdir -p {output.fnadir}
             touch {output.fnalist}
         fi
         rm $INPUT_FNA
-        rm $INPUT_JSON
         rm -r $TMPDIR
         """
 

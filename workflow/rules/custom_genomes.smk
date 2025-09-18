@@ -7,4 +7,4 @@ rule custom_samples:
             dummy_df.index.name = "genome_id"
             dummy_df.to_csv(output.samples_file)
         else:
-            CUSTOM_SAMPLES.loc[["source", "path"]].to_csv(output.samples_file)
+            CUSTOM_SAMPLES[["source", "path"]].to_csv(output.samples_file)

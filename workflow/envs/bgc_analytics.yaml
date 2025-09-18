@@ -13,7 +13,7 @@ dependencies:
   - seaborn
   - pandas
   - plotly
-  - python-kaleido
+  - python-kaleido=0.2.1
   - bokeh
   - openpyxl
   - nbconvert==6.4.2
@@ -35,3 +35,4 @@ dependencies:
       - alive_progress
       - python-louvain
       - ncbi-genome-download==0.3.3
+      - kaleido==0.2.1

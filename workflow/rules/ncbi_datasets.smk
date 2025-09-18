@@ -26,7 +26,9 @@ rule ncbi_dataset_for_taxon:
         "logs/taxon/ncbi_datasets/ncbi_dataset_for_taxon_{taxon}.log",
     shell:
         """
-            datasets summary genome taxon {params.taxon} --assembly-version latest --assembly-source RefSeq {params.reference} --as-json-lines | dataformat tsv genome --fields {params.fields} > {output.tsv} 2> {log}
+            # Using jq instead of dataformat to handle missing fields gracefully
+            echo -e "Assembly Accession\tOrganism Name\tOrganism Taxonomic ID\tSource Database\tAssembly Name\tAssembly Level\tANI Best ANI match Assembly\tCheckM completeness\tCheckM contamination\tAssembly Stats GC Percent\tAssembly Stats Number of Scaffolds\tAssembly Stats Number of Contigs\tAssembly Stats Total Sequence Length\tAssembly Stats Contig N50\tAssembly Stats Scaffold N50" > {output.tsv} 2> {log}
+            datasets summary genome taxon {params.taxon} --assembly-version latest --assembly-source RefSeq {params.reference} --as-json-lines | jq -r '[.accession, .organism.organism_name // "", .organism.tax_id // "", .source_database // "", .assembly_info.assembly_name // "", .assembly_info.assembly_level // "", .average_nucleotide_identity.best_ani_match.assembly // "", .checkm_info.completeness // "", .checkm_info.contamination // "", .assembly_stats.gc_percent // "", .assembly_stats.number_of_scaffolds // "", .assembly_stats.number_of_contigs // "", .assembly_stats.total_sequence_length // "", .assembly_stats.contig_n50 // "", .assembly_stats.scaffold_n50 // ""] | @tsv' >> {output.tsv} 2>> {log}
         """
 
 checkpoint ncbi_dataset_tsv_to_samples_csv:
@@ -237,6 +239,6 @@ rule ncbi_dataset_collect:
                 LINKPATH=`realpath -s --relative-to=$RELDIR "{params.fna}"`
                 ln -s $LINKPATH {output.fna}
             fi
-            grep '^{{"accession":"{wildcards.accession}"' {input.jsonl_report} > {output.json_report} || true
+            grep -F '"currentAccession":"{wildcards.accession}"' {input.jsonl_report} > {output.json_report} || touch {output.json_report}
             python workflow/scripts/add_info_to_assembly_report.py {output.json_report}
         """

@@ -58,10 +58,14 @@ if config.get("use_ncbi_data_for_checkm", False):
             if [ -s {input.missing} ]; then
                 mkdir -p {output.fna}
                 mkdir -p {output.tempdir}
+                mkdir -p {output.checkm_dir}/storage
+                mkdir -p {output.checkm_dir}/bins
                 for f in {input.fna}; do cp $f {output.fna}/.; done
                 TEMPDIR={output.tempdir} checkm lineage_wf -t {threads} --reduced_tree -x fna {output.fna} {output.checkm_dir} &>> {log}
             else
                 mkdir -p {output.checkm_dir}
+                mkdir -p {output.checkm_dir}/storage
+                mkdir -p {output.checkm_dir}/bins
                 mkdir -p {output.tempdir}
                 touch {output.stat}
                 mkdir -p {output.fna}
