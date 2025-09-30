@@ -98,9 +98,9 @@ conda activate bgcflow
 
 5. **Run BGCFlow** with:
 ```bash
-snakemake --snakefile workflow/PanKB_Family --use-conda --rerun-triggers mtime -c <n_cores> --rerun-incomplete --keep-going --resources ncbi_api=1
+snakemake --snakefile workflow/PanKB_Family --use-conda --rerun-triggers mtime -c <n_cores> --rerun-incomplete --keep-going --resources ncbi_api=1 --latency-wait 300
 ```
-Replace `<n_cores>` with the number of cores of your VM (or how many you want to allocate).
+Replace `<n_cores>` with the number of cores of your VM (or how many you want to allocate). The `--latency-wait 300` parameter gives Snakemake 5 minutes to wait for output files to appear, preventing failures due to filesystem latency.
 
 ## Long-term storage of BGCFlow results
 
