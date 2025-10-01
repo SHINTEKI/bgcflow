@@ -1,0 +1,9 @@
+name: bakta
+channels:
+  - conda-forge
+  - bioconda
+  - anaconda
+dependencies:
+  - python=3.11.13
+  - bakta=1.7.0
+  - pyrodigal=2.3.0
